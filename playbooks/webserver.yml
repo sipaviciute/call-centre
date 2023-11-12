@@ -1,0 +1,8 @@
+---
+- name: Webserver VM creation
+  hosts: all
+  become: true
+  become_user: root
+  roles:
+    - role: webserver
+      message: "Creating webserver"

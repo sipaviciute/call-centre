@@ -1,0 +1,8 @@
+---
+- name: DB VM creation
+  hosts: all
+  become: true
+  become_user: root
+  roles:
+    - role: db
+      message: "Creating db"
