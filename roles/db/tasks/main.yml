@@ -1,0 +1,97 @@
+# ---
+
+# - name: Update all apps
+#   ansible.builtin.apt:
+#     update_cache: true
+
+# - name: Create MySQL Database
+#   hosts: your_target_host
+#   become: yes
+#   tasks:
+#     - name: Ensure a database exists
+#       mysql_db:
+#         login_host: localhost
+#         login_user: your_mysql_user
+#         login_password: your_mysql_password
+#         name: your_database_name
+#         state: present
+
+---
+- hosts: database_vm
+  become: yes
+  vars:
+    mysql_root_password: "YourRootPassword"
+    mysql_db: "testdb"
+    mysql_user: "adsi8893"
+    mysql_password: "UserPassword"
+    webserver_vm_ip: "10.0.0.227"
+
+  tasks:
+    - name: Update and Upgrade APT Packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Download MySQL APT Config
+      get_url:
+        url: https://dev.mysql.com/get/mysql-apt-config_0.8.22-1_all.deb
+        dest: /tmp/mysql-apt-config.deb
+
+    - name: Install MySQL APT Config
+      apt:
+        deb: /tmp/mysql-apt-config.deb
+
+    - name: Install MySQL Server
+      apt:
+        name: mysql-server
+        state: present
+
+    # mysql_secure_installation ?
+
+    - name: Modify mysqld.cnf
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+        create: yes
+      notify: Restart MySQL
+
+    - name: Create MySQL Database
+      mysql_db:
+        name: "{{ mysql_db }}"
+        state: present
+
+    - name: Create MySQL User
+      mysql_user:
+        name: "{{ mysql_user }}"
+        password: "{{ mysql_password }}"
+        priv: "{{ mysql_db }}.*:ALL"
+        host: "{{ webserver_vm_ip }}"
+
+    - name: Install UFW
+      apt:
+        name: ufw
+        state: present
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Allow SSH through UFW
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Allow MySQL from Web Server VM
+      ufw:
+        rule: allow
+        proto: tcp
+        from: "{{ webserver_vm_ip }}"
+        to: any
+        port: '3306'
+
+  handlers:
+    - name: Restart MySQL
+      service:
+        name: mysql
+        state: restarted

@@ -1,0 +1,11 @@
+---
+- hosts: all
+  become: true
+  become_user: root
+  roles:
+    - role: webserver
+      message: "Creating webserver"
+    - role: db
+      message: "Creating database"
+    - role: client
+      message: "Creating client"
